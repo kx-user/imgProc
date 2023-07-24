@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="jp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>画像処理＿補助用サイト</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css?family=Ravi+Prakash" rel="stylesheet">
+</head>
+<body>
+    <h1>自分用　画像処理CPP</h1>
+        <div class="code">
+            <p>//画像の入力;
+                src_img = cv::imread(FILE_NAME, cv::IMREAD_COLOR);
+                if (src_img.empty()) { //入力失敗の場合
+                    fprintf(stderr, "Cannot read image file: %s.\n", FILE_NAME);
+                    return (-1);
+            }</p>
+        </div>
+            <div class="code">
+                <p>//画像変数の宣言;
+                    cv::Mat src_img, gray_img, bin_img, tmp_img, tmpB_img ,dst_img;</p>
+            </div>
+            <div class="code">
+                <p>//HSVの画像の宣言;
+                    cv::Vec3b p; //色値(HSV);
+                    cv::Mat hsv_img;</p>
+            </div>
+            <div class="code">
+                <p>//輪郭の座標リストの宣言;
+                    std::vector< std::vector< cv::Point > > contours;</p>
+            </div>
+            <div class="code">
+                <p>//tmp_img内の輪郭の数をcontoursという変数に格納する。;
+                    cv::findContours(tmp_img,contours,cv::RETR_EXTERNAL,cv::CHAIN_APPROX_NONE);</p>
+            </div>
+            <div class="code">
+                <p>//画像を黒で初期化する;
+                    dst_img = cv::Mat::zeros(src_img.size(), CV_8UC1);</p>
+            </div>
+    
+
+        <div class="code">
+            <p>//RGBからHSVに変換する;
+                cv::cvtColor(src_img, hsv_img, cv::COLOR_BGR2HSV);</p>
+        </div>
+        <div class="code">
+            <p>//HSVからRGBに変換する;
+                cv::cvtColor(hsv_img, dst_img, cv::COLOR_HSV2BGR);</p>
+        </div>
+        <div class="code">
+            <p>//グレースケールに変換する;
+                cv::cvtColor(src_img, gray_img, cv::COLOR_BGR2GRAY);</p>
+        </div>
+        <div class="code">
+            <p>//THを基準に二値化する。※max_valueが明るい方の値となる。;
+                cv::threshold(gray_img, bin_img,TH, max_value,cv::THRESH_BINARY_INV);</p>
+        </div>
+        <div class="code">
+            <p>//判別分析法(大津)による二値化;
+                cv::threshold(src_img, dst_img,0,255,cv::THRESH_BINARY | cv::THRESH_OTSU);</p>
+        </div>
+        <div class="code">
+            <p>//ヒストグラム;
+                void createHist(cv::Mat src_img, int hist[COLOR_MAX]){
+                    for(int i = 0; i < COLOR_MAX; i++){
+                        hist[i] = 0;//加算用の配列を初期化
+                    }
+                    for(int y = 0; y < src_img.rows; y++){
+                        for(int x = 0; x < src_img.cols; x++){
+                            uchar s = src_img.at<unsigned char>(y,x);
+                            hist[(int)s]++;  //s番目（明るさ）を加算
+                            
+                        }
+                    }
+                    for(int i = 0; i < COLOR_MAX; i++){
+                        printf("%d %d\n",i,hist[i]);
+                    }
+                }
+                createHist(src_img,hist);</p>
+        </div>
+        <div class="code">
+            <p>//類似度マップを作る;
+                template_img = cv::imread(TEMPLATE_IMG_FILE, cv::IMREAD_COLOR);
+                compare_img = cv::Mat(cv::Size(src_img.rows - template_img.rows + 1, src_img.cols - template_img.cols + 1), CV_32F, 1);</p>
+        </div>
+        <div class="code">
+            <p>//類似度マップを作る（n個分）;
+                void createMap(cv::Mat src_img, cv::Mat template_img[],cv::Mat compare_img[],int count){
+                    for(int i = 0; i < count; i++){
+                        compare_img[i] = cv::Mat(cv::Size(src_img.rows - template_img[i].rows + 1, src_img.cols - template_img[i].cols + 1), CV_32F, 1);
+                    }
+                }
+                createMap(src_img,template_img,compare_img,n);</p>
+        </div>
+        <div class="code">
+            <p>//円かどうかの判別;
+                double L;
+                double S;
+                double R;
+                L = cv::arcLength(contours[i], true);
+                S = cv::contourArea(contours[i]);
+                R = 4 * M_PI * S / (L*L);</p>
+        </div>
+    
+    <div class="code">
+        <p>//メディアンフィルター;
+            cv::medianBlur(src_img, median_img, FILTER_SIZE);</p>
+    </div>
+    <div class="code">
+        <p>//ガウシアンフィルター;
+            cv::GaussianBlur(src_img , dst_img , cv::Size(FILTER_SIZE , FILTER_SIZE), 0);</p>
+    </div>
+    <div class="code">
+        <p>//ソーベルフィルタ（横）;
+            cv::Sobel(src_img, tmp_img, CV_32F, 1, 0);
+            cv::convertScaleAbs(tmp_img, dst_img);</p>
+    </div>
+    <div class="code">
+        <p>//ソーベルフィルター（縦);
+            cv::Sobel(src_img, tmp_img, CV_32F, 0, 1);
+            cv::convertScaleAbs(tmp_img, dst_img);</p>
+    </div>
+    <div class="code">
+        <p>//ソーベルフィルター(縦横)
+            void sobelMaster(cv::Mat src_img, cv::Mat dst_img){
+                cv::Mat H_img, H_tmp_img;
+                cv::Mat V_img, V_tmp_img;
+                double h;
+                double v;
+                double filter_h_s_x[] = {-1.,0.,1.,
+                                    -2.,0.,2.,
+                                    -1.,0.,1.};
+                double filter_h_s_y[] = {-1.,-2.,-1.,
+                                    0.,0.,0.,
+                                    1.,2.,1.};
+                cv::Mat kernel_s_y = cv::Mat(3, 3, CV_64FC1, filter_h_s_y);
+                cv::Mat kernel_s_x = cv::Mat(3, 3, CV_64FC1, filter_h_s_x);
+                cv::filter2D(src_img, H_img, CV_64FC1, kernel_s_y);
+                cv::filter2D(src_img, V_img, CV_64FC1, kernel_s_x);
+                cv::Mat G_img = cv::Mat(src_img.size(), CV_64FC1);
+                for(int y = 0; y < G_img.rows ;y++){
+                    for(int x = 0; x < G_img.cols ;x++){
+                        h = H_img.at<double>(y,x);
+                        v = V_img.at<double>(y,x);
+                        
+                        G_img.at<double>(y,x) = sqrt(h*h + v*v);
+                    }
+                }
+                cv::convertScaleAbs(G_img, dst_img);
+            }
+            sobelMaster(src_img,dst_img);//ここでの入力画像はグレースケール</p>
+    </div>
+    <div class="code">
+        <p>//コントラストをはっきりとさせる;
+            void contrast(cv::Mat src_img, cv::Mat dst_img, uchar Imax, uchar Imin, uchar Dmax, uchar Dmin){
+                //最小値と最大値を調べる
+                for(int y = 0; y < src_img.rows; y++){
+                    for(int x = 0; x < src_img.cols; x++){
+                        unsigned char s = src_img.at<unsigned char>(y,x);
+                        if(Imin > s){
+                            Imin = s;//最小値の更新
+                        }
+                        
+                        if(Imax < s){
+                            Imax = s;//最大値の更新
+                        }
+                        
+                    }
+                }
+                fprintf(stderr, "Imin=%d, Imax=%d\n",Imin, Imax);
+                
+                //線形変換をする
+                for(int y = 0; y < src_img.rows; y++){
+                    for(int x = 0; x < src_img.cols; x++){
+                        
+                        unsigned char s = src_img.at<unsigned char>(y,x);
+                        s = (Dmax - Dmin) / (Imax - Imin) * (s - Imin) + Dmin;
+                        dst_img.at<unsigned char>(y,x) = s;
+                        
+                    }
+                }
+            }
+            unsigned char Imin, Imax;//変換前の画素値の最小値・最大値
+            unsigned char Dmin, Dmax;//変換後の画素値の最小値・最大値
+            Imax = 0;
+            Imin = 255;
+            Dmin = 0;
+            Dmax = 255;
+            contrast(src_img,dst_img,Imax,Imin,Dmax,Dmin);</p>
+    </div>
+    <div class="code">
+        <p>//二つの画像を半透明にして合成(ALPHAは0.5)
+            void alpha(cv::Mat src_img1, cv::Mat src_img2, cv::Mat dst_img, double alpha){
+                for(int y = 0; y < src_img1.rows; y++){
+                    for(int x = 0; x < src_img1.cols; x++){
+                        double s1 = (double)src_img1.at<uchar>(y,x);
+                        double s2 = (double)src_img2.at<uchar>(y,x);
+                        int s_result = alpha * s1 + (1.0 - alpha) * s2;
+                        dst_img.at<uchar>(y,x) = (uchar)s_result;
+                    }
+                }
+            }
+            alpha(src_img1,src_img2,dst_img,ALPHA);</p>
+    </div>
+    <div class="code">
+        <p>//COUNTという変数に基づいて、膨張⇨縮小⇨膨張を行う。
+            cv::dilate(tmp_img,tmp_img,cv::Mat(),cv::Point(-1,-1),COUNT);
+            cv::erode(tmp_img,tmp_img,cv::Mat(),cv::Point(-1,-1),COUNT*2);
+            cv::dilate(tmp_img,tmp_img,cv::Mat(),cv::Point(-1,-1),COUNT);</p>
+    </div>
+    <div class="code">
+        <p>//輪郭を綺麗に描画
+            cv::Canny(gray_img,dst_img,100,200);</p>
+    </div>
+    <div class="code">
+        <p>//i番目の図形を太さ10で塗りつぶす
+            cv::drawContours(dst_img, contours, i, CV_RGB(255, 255, 255), 10);</p>
+    </div>
+    <div class="code">
+        <p>//類似度マップに基づいて、テンプレート画像となる場所を四角形で囲む
+            float s_min = 999.9;
+            for(int y = 0; y < compare_img.rows; y++){
+                for(int x = 0; x < compare_img.cols; x++){
+                    s = compare_img.at<float>(y,x);
+                    if(s < 0.1){
+                        if(s_min > s){
+                            s_min = s;//最小値を求めてテンプレートの場所を把握させる
+                        }
+                    }
+                }
+            }
+            for(int y = 0; y < compare_img.rows; y++){
+                for(int x = 0; x < compare_img.cols; x++){
+                    s = compare_img.at<float>(y,x);
+                    if(s == s_min){
+                        cv::rectangle(result_img,cv::Point(x,y),cv::Point(x + template_img.cols, y + template_img.rows), CV_RGB(255,255,0),3);
+                    }
+                }
+            }</p>
+    </div>
+    <div class="code">
+        <p>//テンプレートマッチング（複数）
+            for(int i = 0; i < 4; i++){
+                cv::matchTemplate(src_img, template_img[i], compare_img[i], cv::TM_SQDIFF_NORMED);
+            }
+            cv::Scalar color[] = {CV_RGB(255, 0, 0),
+                CV_RGB(0, 130, 10),
+                CV_RGB(255, 255, 0),
+                CV_RGB(255, 51, 255)
+            };
+            for(int i = 0; i < 4; i++){
+                printf("i = %d\n",i);
+                for(int y = 0; y < compare_img[i].rows; y++){
+                    for(int x = 0; x < compare_img[i].cols; x++){
+                        s = compare_img[i].at<float>(y,x);
+                        if(s < 0.1){
+                            cv::rectangle(result_img,cv::Point(x,y),cv::Point(x + template_img[i].cols, y + template_img[i].rows), color[i],3);
+                        }
+                    }
+                }
+            }</p>
+    </div>
+    <div class="code">
+        <p>//各図形に赤色の丸を描画する;
+            for (int i=0; i < contours.size(); i++) {
+                float radius;
+                cv::Point2f center;
+                cv::minEnclosingCircle(contours[i], center, radius);
+                cv::circle(dst_img, center, (int)radius, CV_RGB(255,0,0),2);
+            }</p>
+    </div>
+    <div class="code">
+        <p>//各図形を異なる色で塗りつぶす
+            cv::Scalar color[] = {CV_RGB(255,0,0),
+                                    CV_RGB(0,255,0),
+                                    CV_RGB(0,0,255),
+                                    CV_RGB(255,0,255)};
+            for (int i=0; i < contours.size(); i++) {
+                cv::drawContours(dst_img, contours, i, color[i%4], cv::FILLED);
+            }</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
